@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Basket Analysis Dashboard</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .slider-container {
+            position: relative;
+        }
+        
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e5e7eb;
+            outline: none;
+            transition: background 0.3s;
+        }
+        
+        .slider:hover {
+            background: #d1d5db;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            background: #2563eb;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+            transition: background 0.3s;
+        }
+        
+        .slider::-moz-range-thumb:hover {
+            background: #2563eb;
+        }
+        
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 0.5rem;
+        }
+        
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        th {
+            position: sticky;
+            top: 0;
+            background: #1e293b;
+            color: white;
+            z-index: 10;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        th:hover {
+            background: #334155;
+        }
+        
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+        
+        .sort-indicator {
+            display: inline-block;
+            margin-left: 0.5rem;
+            opacity: 0.5;
+        }
+        
+        .sort-indicator.active {
+            opacity: 1;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .rule-row {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .rule-row:hover {
+            background: #f1f5f9 !important;
+            transform: scale(1.01);
+        }
+        
+        .rule-row.selected {
+            background: #dbeafe !important;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .details-panel {
+            position: fixed;
+            right: -400px;
+            top: 0;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .details-panel.open {
+            right: 0;
+        }
+        
+        .details-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+        
+        .details-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .metric-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Welcome Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        
+        .keyboard-shortcut {
+            display: inline-block;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin: 0 0.25rem;
+        }
+        
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Welcome Modal -->
+    <div id="welcomeModal" class="modal-overlay" role="dialog" aria-labelledby="welcomeTitle" aria-modal="true">
+        <div class="modal-content">
+            <h2 id="welcomeTitle" class="text-2xl font-bold text-gray-800 mb-4">👋 Welcome to Market Basket Analysis Dashboard</h2>
+            <div class="text-gray-700 space-y-4">
+                <p>This interactive dashboard helps you explore association rules and discover product relationships in your data.</p>
+                
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2">🎯 Quick Start Guide:</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><strong>📊 View Charts:</strong> Scroll down to see visual analytics including bar charts, scatter plots, and histograms.</li>
+                        <li><strong>🔍 Filter Rules:</strong> Use the sliders and search box to filter association rules by support, confidence, lift, or item names.</li>
+                        <li><strong>👆 Click Rules:</strong> Click any rule in the table to see detailed insights and business recommendations.</li>
+                        <li><strong>📥 Export Data:</strong> Export filtered rules to CSV for further analysis.</li>
+                        <li><strong>↕️ Sort Columns:</strong> Click column headers to sort the table.</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-purple-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2">⌨️ Keyboard Shortcuts:</h3>
+                    <ul class="space-y-1 text-sm">
+                        <li><span class="keyboard-shortcut">R</span> Reset all filters</li>
+                        <li><span class="keyboard-shortcut">E</span> Export to CSV</li>
+                        <li><span class="keyboard-shortcut">Esc</span> Close detail panel</li>
+                        <li><span class="keyboard-shortcut">?</span> Show keyboard shortcuts</li>
+                    </ul>
+                </div>
+                
+                <div class="flex items-center justify-between mt-6">
+                    <label class="flex items-center text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" id="dontShowAgain" class="mr-2">
+                        Don't show this again
+                    </label>
+                    <button id="closeWelcome" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                        Get Started
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Keyboard Shortcuts Help Modal -->
+    <div id="shortcutsModal" class="modal-overlay" role="dialog" aria-labelledby="shortcutsTitle" aria-modal="true">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="shortcutsTitle" class="text-2xl font-bold text-gray-800">⌨️ Keyboard Shortcuts</h2>
+                <button id="closeShortcuts" class="text-gray-500 hover:text-gray-700 text-2xl" aria-label="Close shortcuts help">
+                    ×
+                </button>
+            </div>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-700">Reset all filters</span>
+                    <span class="keyboard-shortcut">R</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-700">Export to CSV</span>
+                    <span class="keyboard-shortcut">E</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-700">Close detail panel</span>
+                    <span class="keyboard-shortcut">Esc</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                    <span class="text-gray-700">Show this help</span>
+                    <span class="keyboard-shortcut">?</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite">
+        <div class="spinner"></div>
+        <span class="sr-only">Loading...</span>
+    </div>
+    
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Market Basket Analysis Dashboard</h1>
+            <p class="text-gray-600">Explore association rules and discover product relationships</p>
+        </header>
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div class="metric-card">
+                <div class="text-sm opacity-90 mb-1">Total Rules</div>
+                <div class="text-3xl font-bold" id="totalRules">0</div>
+            </div>
+            <div class="metric-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="text-sm opacity-90 mb-1">Displayed Rules</div>
+                <div class="text-3xl font-bold" id="filteredRules">0</div>
+            </div>
+            <div class="metric-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="text-sm opacity-90 mb-1">Avg Confidence</div>
+                <div class="text-3xl font-bold" id="avgConfidence">0%</div>
+            </div>
+            <div class="metric-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="text-sm opacity-90 mb-1">Avg Lift</div>
+                <div class="text-3xl font-bold" id="avgLift">0.0</div>
+            </div>
+            <div class="metric-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+                <div class="text-sm opacity-90 mb-1">Avg Support</div>
+                <div class="text-3xl font-bold" id="avgSupport">0.0%</div>
+            </div>
+        </div>
+        
+        <!-- Filters Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Filters</h2>
+            
+            <!-- Search Box -->
+            <div class="mb-6">
+                <label for="searchBox" class="block text-sm font-medium text-gray-700 mb-2">Search by Item Name</label>
+                <input 
+                    type="text" 
+                    id="searchBox" 
+                    placeholder="e.g., whole milk, soda..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    aria-label="Search rules by item name"
+                />
+            </div>
+            
+            <!-- Sliders -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Support Slider -->
+                <div class="slider-container">
+                    <label for="supportSlider" class="block text-sm font-medium text-gray-700 mb-2">
+                        Minimum Support: <span id="supportValue" class="text-blue-600 font-semibold">0.000</span>
+                    </label>
+                    <input 
+                        type="range" 
+                        id="supportSlider" 
+                        class="slider" 
+                        min="0" 
+                        max="0.03" 
+                        step="0.001" 
+                        value="0"
+                        aria-label="Minimum support threshold"
+                        aria-valuemin="0"
+                        aria-valuemax="0.03"
+                        aria-valuenow="0"
+                    />
+                </div>
+                
+                <!-- Confidence Slider -->
+                <div class="slider-container">
+                    <label for="confidenceSlider" class="block text-sm font-medium text-gray-700 mb-2">
+                        Minimum Confidence: <span id="confidenceValue" class="text-blue-600 font-semibold">0.00</span>
+                    </label>
+                    <input 
+                        type="range" 
+                        id="confidenceSlider" 
+                        class="slider" 
+                        min="0" 
+                        max="1" 
+                        step="0.05" 
+                        value="0"
+                        aria-label="Minimum confidence threshold"
+                        aria-valuemin="0"
+                        aria-valuemax="1"
+                        aria-valuenow="0"
+                    />
+                </div>
+                
+                <!-- Lift Slider -->
+                <div class="slider-container">
+                    <label for="liftSlider" class="block text-sm font-medium text-gray-700 mb-2">
+                        Minimum Lift: <span id="liftValue" class="text-blue-600 font-semibold">1.0</span>
+                    </label>
+                    <input 
+                        type="range" 
+                        id="liftSlider" 
+                        class="slider" 
+                        min="1" 
+                        max="4" 
+                        step="0.1" 
+                        value="1"
+                        aria-label="Minimum lift threshold"
+                        aria-valuemin="1"
+                        aria-valuemax="4"
+                        aria-valuenow="1"
+                    />
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="mt-6 flex gap-4">
+                <button 
+                    id="resetBtn" 
+                    class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium"
+                    aria-label="Reset all filters (Keyboard shortcut: R)"
+                >
+                    🔄 Reset Filters
+                </button>
+                <button 
+                    id="exportBtn" 
+                    class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                    aria-label="Export filtered rules to CSV (Keyboard shortcut: E)"
+                >
+                    📥 Export to CSV
+                </button>
+            </div>
+        </div>
+        
+        <!-- Charts Section -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">📊 Visual Analytics</h2>
+            
+            <!-- Top Rules Bar Chart -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Top Rules by Lift</h3>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="liftChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Scatter Plot and Histogram -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">Support vs Confidence (Bubble = Lift)</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">Lift Distribution</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="histogramChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Table Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Association Rules</h2>
+            <div class="table-container">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold" data-sort="antecedents">
+                                Antecedents (If) <span class="sort-indicator">↕</span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold" data-sort="consequents">
+                                Consequents (Then) <span class="sort-indicator">↕</span>
+                            </th>
+                            <th class="px-4 py-3 text-right text-sm font-semibold" data-sort="support">
+                                Support <span class="sort-indicator">↕</span>
+                            </th>
+                            <th class="px-4 py-3 text-right text-sm font-semibold" data-sort="confidence">
+                                Confidence <span class="sort-indicator">↕</span>
+                            </th>
+                            <th class="px-4 py-3 text-right text-sm font-semibold" data-sort="lift">
+                                Lift <span class="sort-indicator">↕</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="rulesTableBody">
+                        <!-- Table rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="noResults" class="text-center py-8 text-gray-500 hidden">
+                No rules match the current filters.
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Panel Overlay -->
+    <div id="detailsOverlay" class="details-overlay"></div>
+    
+    <!-- Details Panel -->
+    <div id="detailsPanel" class="details-panel">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Rule Details</h3>
+                <button id="closeDetails" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    ×
+                </button>
+            </div>
+            
+            <div id="detailsContent">
+                <!-- Content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Association rules data
+        const rulesData = [
+            {
+                id: 1,
+                antecedents: ["citrus fruit", "other vegetables"],
+                consequents: ["root vegetables"],
+                support: 0.0104,
+                confidence: 0.3592,
+                lift: 3.2950
+            },
+            {
+                id: 2,
+                antecedents: ["yogurt", "other vegetables"],
+                consequents: ["whipped/sour cream"],
+                support: 0.0102,
+                confidence: 0.2342,
+                lift: 3.2671
+            },
+            {
+                id: 3,
+                antecedents: ["tropical fruit", "other vegetables"],
+                consequents: ["root vegetables"],
+                support: 0.0123,
+                confidence: 0.3428,
+                lift: 3.1448
+            },
+            {
+                id: 4,
+                antecedents: ["beef"],
+                consequents: ["root vegetables"],
+                support: 0.0174,
+                confidence: 0.3314,
+                lift: 3.0404
+            },
+            {
+                id: 5,
+                antecedents: ["root vegetables", "citrus fruit"],
+                consequents: ["other vegetables"],
+                support: 0.0104,
+                confidence: 0.5862,
+                lift: 3.0296
+            },
+            {
+                id: 6,
+                antecedents: ["root vegetables", "tropical fruit"],
+                consequents: ["other vegetables"],
+                support: 0.0123,
+                confidence: 0.5845,
+                lift: 3.0210
+            },
+            {
+                id: 7,
+                antecedents: ["other vegetables", "whole milk"],
+                consequents: ["root vegetables"],
+                support: 0.0232,
+                confidence: 0.3098,
+                lift: 2.8421
+            },
+            {
+                id: 8,
+                antecedents: ["root vegetables"],
+                consequents: ["other vegetables", "whole milk"],
+                support: 0.0232,
+                confidence: 0.2127,
+                lift: 2.8421
+            },
+            {
+                id: 9,
+                antecedents: ["butter"],
+                consequents: ["other vegetables", "whole milk"],
+                support: 0.0115,
+                confidence: 0.2073,
+                lift: 2.7706
+            },
+            {
+                id: 10,
+                antecedents: ["curd", "whole milk"],
+                consequents: ["yogurt"],
+                support: 0.0101,
+                confidence: 0.3852,
+                lift: 2.7614
+            },
+            {
+                id: 11,
+                antecedents: ["whipped/sour cream"],
+                consequents: ["other vegetables", "whole milk"],
+                support: 0.0146,
+                confidence: 0.2043,
+                lift: 2.7294
+            },
+            {
+                id: 12,
+                antecedents: ["yogurt", "other vegetables"],
+                consequents: ["root vegetables"],
+                support: 0.0129,
+                confidence: 0.2974,
+                lift: 2.7287
+            },
+            {
+                id: 13,
+                antecedents: ["yogurt", "other vegetables"],
+                consequents: ["tropical fruit"],
+                support: 0.0123,
+                confidence: 0.2834,
+                lift: 2.7005
+            },
+            {
+                id: 14,
+                antecedents: ["root vegetables", "other vegetables"],
+                consequents: ["citrus fruit"],
+                support: 0.0104,
+                confidence: 0.2189,
+                lift: 2.6446
+            },
+            {
+                id: 15,
+                antecedents: ["other vegetables", "rolls/buns"],
+                consequents: ["root vegetables"],
+                support: 0.0122,
+                confidence: 0.2864,
+                lift: 2.6275
+            }
+        ];
+
+        // Transform data to format expected by the application
+        const associationRules = rulesData.map(rule => ({
+            id: rule.id,
+            antecedents: rule.antecedents.join(", "),
+            consequents: rule.consequents.join(", "),
+            antecedentsArray: rule.antecedents,
+            consequentsArray: rule.consequents,
+            support: rule.support,
+            confidence: rule.confidence,
+            lift: rule.lift
+        }));
+
+        // State
+        let filteredData = [...associationRules];
+        let sortColumn = 'lift';
+        let sortDirection = 'desc';
+        let liftChart = null;
+        let scatterChart = null;
+        let histogramChart = null;
+        let filterTimeout = null;
+
+        // DOM Elements
+        const searchBox = document.getElementById('searchBox');
+        const supportSlider = document.getElementById('supportSlider');
+        const confidenceSlider = document.getElementById('confidenceSlider');
+        const liftSlider = document.getElementById('liftSlider');
+        const supportValue = document.getElementById('supportValue');
+        const confidenceValue = document.getElementById('confidenceValue');
+        const liftValue = document.getElementById('liftValue');
+        const resetBtn = document.getElementById('resetBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const rulesTableBody = document.getElementById('rulesTableBody');
+        const noResults = document.getElementById('noResults');
+        const totalRules = document.getElementById('totalRules');
+        const filteredRules = document.getElementById('filteredRules');
+        const avgConfidence = document.getElementById('avgConfidence');
+        const detailsPanel = document.getElementById('detailsPanel');
+        const detailsOverlay = document.getElementById('detailsOverlay');
+        const closeDetails = document.getElementById('closeDetails');
+        const detailsContent = document.getElementById('detailsContent');
+        const welcomeModal = document.getElementById('welcomeModal');
+        const closeWelcome = document.getElementById('closeWelcome');
+        const dontShowAgain = document.getElementById('dontShowAgain');
+        const shortcutsModal = document.getElementById('shortcutsModal');
+        const closeShortcuts = document.getElementById('closeShortcuts');
+
+        // Initialize
+        function init() {
+            try {
+                updateMetrics();
+                renderTable();
+                renderLiftChart();
+                renderScatterChart();
+                renderHistogramChart();
+                attachEventListeners();
+                setupKeyboardShortcuts();
+                checkWelcomeModal();
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('Failed to initialize dashboard. Please refresh the page.');
+            }
+        }
+        
+        // Check if welcome modal should be shown
+        function checkWelcomeModal() {
+            const dontShow = localStorage.getItem('mba_hideWelcome');
+            if (!dontShow) {
+                setTimeout(() => {
+                    welcomeModal.classList.add('active');
+                }, 500);
+            }
+        }
+        
+        // Setup keyboard shortcuts
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ignore if typing in input
+                if (e.target.tagName === 'INPUT') return;
+                
+                switch(e.key.toLowerCase()) {
+                    case 'r':
+                        e.preventDefault();
+                        resetFilters();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        exportToCSV();
+                        break;
+                    case 'escape':
+                        closeDetailsPanel();
+                        break;
+                    case '?':
+                        e.preventDefault();
+                        shortcutsModal.classList.add('active');
+                        break;
+                }
+            });
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg z-50';
+            errorDiv.innerHTML = `
+                <div class="flex items-center">
+                    <span class="text-xl mr-2">⚠️</span>
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-red-700 hover:text-red-900">
+                        ×
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+        
+        // Debounced filter function
+        function debouncedFilter() {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                try {
+                    filterData();
+                } catch (error) {
+                    console.error('Filter error:', error);
+                    showError('Error applying filters. Please try again.');
+                }
+            }, 300);
+        }
+
+        // Update metrics
+        function updateMetrics() {
+            totalRules.textContent = associationRules.length;
+            filteredRules.textContent = filteredData.length;
+            
+            if (filteredData.length > 0) {
+                const avgConf = filteredData.reduce((sum, rule) => sum + rule.confidence, 0) / filteredData.length;
+                const avgLiftVal = filteredData.reduce((sum, rule) => sum + rule.lift, 0) / filteredData.length;
+                const avgSup = filteredData.reduce((sum, rule) => sum + rule.support, 0) / filteredData.length;
+                
+                avgConfidence.textContent = (avgConf * 100).toFixed(1) + '%';
+                document.getElementById('avgLift').textContent = avgLiftVal.toFixed(2);
+                document.getElementById('avgSupport').textContent = (avgSup * 100).toFixed(2) + '%';
+            } else {
+                avgConfidence.textContent = '0%';
+                document.getElementById('avgLift').textContent = '0.0';
+                document.getElementById('avgSupport').textContent = '0.0%';
+            }
+        }
+
+        // Filter data
+        function filterData() {
+            try {
+                const searchTerm = searchBox.value.toLowerCase().trim();
+                const minSupport = parseFloat(supportSlider.value) || 0;
+                const minConfidence = parseFloat(confidenceSlider.value) || 0;
+                const minLift = parseFloat(liftSlider.value) || 1;
+                
+                // Validate inputs
+                if (isNaN(minSupport) || isNaN(minConfidence) || isNaN(minLift)) {
+                    showError('Invalid filter values. Please check your inputs.');
+                    return;
+                }
+
+            filteredData = associationRules.filter(rule => {
+                const matchesSearch = searchTerm === '' || 
+                    rule.antecedents.toLowerCase().includes(searchTerm) ||
+                    rule.consequents.toLowerCase().includes(searchTerm);
+                
+                const matchesSupport = rule.support >= minSupport;
+                const matchesConfidence = rule.confidence >= minConfidence;
+                const matchesLift = rule.lift >= minLift;
+
+                return matchesSearch && matchesSupport && matchesConfidence && matchesLift;
+            });
+
+                sortData();
+                updateMetrics();
+                renderTable();
+                renderLiftChart();
+                renderScatterChart();
+                renderHistogramChart();
+            } catch (error) {
+                console.error('Filter error:', error);
+                showError('Error filtering data. Please try again.');
+            }
+        }
+
+        // Sort data
+        function sortData() {
+            filteredData.sort((a, b) => {
+                let aVal = a[sortColumn];
+                let bVal = b[sortColumn];
+
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (sortDirection === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+        }
+
+        // Render table
+        function renderTable() {
+            if (filteredData.length === 0) {
+                rulesTableBody.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+
+            const rows = filteredData.map((rule, index) => {
+                const liftClass = rule.lift >= 3.0 ? 'lift-high' : rule.lift >= 2.7 ? 'lift-medium' : 'lift-low';
+                
+                // Generate insight badges
+                const badges = [];
+                
+                // Lift badge
+                if (rule.lift > 3.0) {
+                    badges.push('<span style="background: #10b98120; color: #10b981; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-left: 4px;">🚀 Exceptional</span>');
+                } else if (rule.lift >= 2.7) {
+                    badges.push('<span style="background: #3b82f620; color: #3b82f6; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-left: 4px;">⭐ Strong</span>');
+                }
+                
+                // Confidence badge
+                if (rule.confidence > 0.4) {
+                    badges.push('<span style="background: #10b98120; color: #10b981; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-left: 4px;">✅ High Conf</span>');
+                }
+                
+                // Support badge
+                if (rule.support > 0.015) {
+                    badges.push('<span style="background: #3b82f620; color: #3b82f6; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-left: 4px;">👥 High Impact</span>');
+                }
+                
+                const badgeHTML = badges.length > 0 ? `<div style="margin-top: 4px;">${badges.join('')}</div>` : '';
+                
+                return `
+                    <tr class="rule-row border-b border-gray-200" data-rule-id="${rule.id}" data-index="${index}">
+                        <td class="px-4 py-3 text-sm text-gray-700">
+                            ${rule.antecedents}
+                            ${badgeHTML}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-700">${rule.consequents}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700 text-right">${rule.support.toFixed(4)}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700 text-right">${(rule.confidence * 100).toFixed(1)}%</td>
+                        <td class="px-4 py-3 text-sm text-right ${liftClass}">${rule.lift.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            rulesTableBody.innerHTML = rows;
+            
+            // Attach click handlers to rows
+            document.querySelectorAll('.rule-row').forEach(row => {
+                row.addEventListener('click', function() {
+                    const index = parseInt(this.dataset.index);
+                    showRuleDetails(filteredData[index]);
+                });
+            });
+        }
+
+        // Get color based on lift value
+        function getLiftColor(lift) {
+            if (lift >= 3.0) return 'rgba(16, 185, 129, 0.8)'; // Green - Very Strong
+            if (lift >= 2.8) return 'rgba(59, 130, 246, 0.8)'; // Blue - Strong
+            if (lift >= 2.6) return 'rgba(245, 158, 11, 0.8)'; // Yellow - Moderate
+            return 'rgba(239, 68, 68, 0.8)'; // Red - Weak
+        }
+        
+        function getLiftColorSolid(lift) {
+            if (lift >= 3.0) return 'rgba(16, 185, 129, 1)';
+            if (lift >= 2.8) return 'rgba(59, 130, 246, 1)';
+            if (lift >= 2.6) return 'rgba(245, 158, 11, 1)';
+            return 'rgba(239, 68, 68, 1)';
+        }
+
+        // Render lift bar chart
+        function renderLiftChart() {
+            const top10 = [...filteredData]
+                .sort((a, b) => b.lift - a.lift)
+                .slice(0, 10);
+
+            const labels = top10.map((rule, idx) => `Rule ${idx + 1}`);
+            const data = top10.map(rule => rule.lift);
+            const backgroundColors = top10.map(rule => getLiftColor(rule.lift));
+            const borderColors = top10.map(rule => getLiftColorSolid(rule.lift));
+
+            if (liftChart) {
+                liftChart.destroy();
+            }
+
+            const ctx = document.getElementById('liftChart').getContext('2d');
+            liftChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Lift',
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const idx = context[0].dataIndex;
+                                    return top10[idx].antecedents + ' → ' + top10[idx].consequents;
+                                },
+                                label: function(context) {
+                                    return 'Lift: ' + context.parsed.x.toFixed(2);
+                                },
+                                afterLabel: function(context) {
+                                    const idx = context.dataIndex;
+                                    const rule = top10[idx];
+                                    return [
+                                        'Support: ' + (rule.support * 100).toFixed(2) + '%',
+                                        'Confidence: ' + (rule.confidence * 100).toFixed(1) + '%'
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Lift Value',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Render scatter plot
+        function renderScatterChart() {
+            const scatterData = filteredData.map(rule => ({
+                x: rule.support * 100, // Convert to percentage
+                y: rule.confidence * 100, // Convert to percentage
+                r: rule.lift * 3, // Bubble size based on lift
+                rule: rule
+            }));
+            
+            if (scatterChart) {
+                scatterChart.destroy();
+            }
+            
+            const ctx = document.getElementById('scatterChart').getContext('2d');
+            scatterChart = new Chart(ctx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Association Rules',
+                        data: scatterData,
+                        backgroundColor: scatterData.map(d => getLiftColor(d.rule.lift)),
+                        borderColor: scatterData.map(d => getLiftColorSolid(d.rule.lift)),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const point = context[0].raw;
+                                    return point.rule.antecedents + ' → ' + point.rule.consequents;
+                                },
+                                label: function(context) {
+                                    const point = context.raw;
+                                    return [
+                                        'Support: ' + point.x.toFixed(2) + '%',
+                                        'Confidence: ' + point.y.toFixed(1) + '%',
+                                        'Lift: ' + point.rule.lift.toFixed(2)
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Support (%)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Confidence (%)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Render histogram
+        function renderHistogramChart() {
+            // Define lift ranges
+            const ranges = [
+                { min: 2.5, max: 2.7, label: '2.5-2.7' },
+                { min: 2.7, max: 2.9, label: '2.7-2.9' },
+                { min: 2.9, max: 3.1, label: '2.9-3.1' },
+                { min: 3.1, max: 3.3, label: '3.1-3.3' },
+                { min: 3.3, max: 3.5, label: '3.3+' }
+            ];
+            
+            // Count rules in each range
+            const counts = ranges.map(range => {
+                return filteredData.filter(rule => {
+                    if (range.label === '3.3+') {
+                        return rule.lift >= range.min;
+                    }
+                    return rule.lift >= range.min && rule.lift < range.max;
+                }).length;
+            });
+            
+            const labels = ranges.map(r => r.label);
+            const backgroundColors = ranges.map(r => getLiftColor((r.min + r.max) / 2));
+            const borderColors = ranges.map(r => getLiftColorSolid((r.min + r.max) / 2));
+            
+            if (histogramChart) {
+                histogramChart.destroy();
+            }
+            
+            const ctx = document.getElementById('histogramChart').getContext('2d');
+            histogramChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Rules',
+                        data: counts,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Rules: ' + context.parsed.y;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Lift Range',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Rules',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                stepSize: 1
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Reset filters function
+        function resetFilters() {
+            searchBox.value = '';
+            supportSlider.value = 0;
+            confidenceSlider.value = 0;
+            liftSlider.value = 1;
+            supportValue.textContent = '0.000';
+            confidenceValue.textContent = '0.00';
+            liftValue.textContent = '1.0';
+            
+            // Update ARIA values
+            supportSlider.setAttribute('aria-valuenow', '0');
+            confidenceSlider.setAttribute('aria-valuenow', '0');
+            liftSlider.setAttribute('aria-valuenow', '1');
+            
+            filterData();
+        }
+        
+        // Attach event listeners
+        function attachEventListeners() {
+            // Search box with debounce
+            searchBox.addEventListener('input', debouncedFilter);
+
+            // Sliders with debounce and ARIA updates
+            supportSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value).toFixed(3);
+                supportValue.textContent = value;
+                e.target.setAttribute('aria-valuenow', e.target.value);
+                debouncedFilter();
+            });
+
+            confidenceSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value).toFixed(2);
+                confidenceValue.textContent = value;
+                e.target.setAttribute('aria-valuenow', e.target.value);
+                debouncedFilter();
+            });
+
+            liftSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value).toFixed(1);
+                liftValue.textContent = value;
+                e.target.setAttribute('aria-valuenow', e.target.value);
+                debouncedFilter();
+            });
+
+            // Reset button
+            resetBtn.addEventListener('click', resetFilters);
+            
+            // Export button
+            exportBtn.addEventListener('click', exportToCSV);
+            
+            // Details panel close
+            closeDetails.addEventListener('click', closeDetailsPanel);
+            detailsOverlay.addEventListener('click', closeDetailsPanel);
+            
+            // Welcome modal
+            closeWelcome.addEventListener('click', () => {
+                if (dontShowAgain.checked) {
+                    localStorage.setItem('mba_hideWelcome', 'true');
+                }
+                welcomeModal.classList.remove('active');
+            });
+            
+            // Shortcuts modal
+            closeShortcuts.addEventListener('click', () => {
+                shortcutsModal.classList.remove('active');
+            });
+            
+            shortcutsModal.addEventListener('click', (e) => {
+                if (e.target === shortcutsModal) {
+                    shortcutsModal.classList.remove('active');
+                }
+            });
+
+            // Table sorting
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const column = th.dataset.sort;
+                    
+                    if (sortColumn === column) {
+                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortColumn = column;
+                        sortDirection = 'desc';
+                    }
+
+                    // Update sort indicators
+                    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+                        indicator.classList.remove('active');
+                        indicator.textContent = '↕';
+                    });
+
+                    const indicator = th.querySelector('.sort-indicator');
+                    indicator.classList.add('active');
+                    indicator.textContent = sortDirection === 'asc' ? '↑' : '↓';
+
+                    sortData();
+                    renderTable();
+                });
+            });
+        }
+
+        // Show rule details
+        function showRuleDetails(rule) {
+            const interpretLift = (lift) => {
+                if (lift > 3) return { text: 'Very Strong', color: '#10b981', desc: 'These items are highly likely to be purchased together.' };
+                if (lift > 2) return { text: 'Strong', color: '#3b82f6', desc: 'These items have a strong association.' };
+                if (lift > 1.5) return { text: 'Moderate', color: '#f59e0b', desc: 'These items show a moderate relationship.' };
+                return { text: 'Weak', color: '#ef4444', desc: 'These items have a weak association.' };
+            };
+            
+            const liftInterpretation = interpretLift(rule.lift);
+            
+            const businessInsight = generateBusinessInsight(rule);
+            
+            detailsContent.innerHTML = `
+                <div class="fade-in">
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6">
+                        <div class="text-sm text-gray-600 mb-2">Association Rule</div>
+                        <div class="text-lg font-semibold text-gray-800">
+                            <span class="text-blue-600">IF</span> ${rule.antecedents}
+                        </div>
+                        <div class="text-2xl text-center my-2">⬇</div>
+                        <div class="text-lg font-semibold text-gray-800">
+                            <span class="text-green-600">THEN</span> ${rule.consequents}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">Metrics</h4>
+                        <div class="space-y-3">
+                            <div class="stat-card">
+                                <div class="text-sm text-gray-600">Support</div>
+                                <div class="text-2xl font-bold text-gray-800">${(rule.support * 100).toFixed(2)}%</div>
+                                <div class="text-xs text-gray-500 mt-1">Frequency of itemset in transactions</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="text-sm text-gray-600">Confidence</div>
+                                <div class="text-2xl font-bold text-gray-800">${(rule.confidence * 100).toFixed(1)}%</div>
+                                <div class="text-xs text-gray-500 mt-1">Likelihood of consequent given antecedent</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="text-sm text-gray-600">Lift</div>
+                                <div class="text-2xl font-bold" style="color: ${liftInterpretation.color}">${rule.lift.toFixed(2)}</div>
+                                <div class="metric-badge" style="background: ${liftInterpretation.color}; color: white; font-size: 0.75rem;">
+                                    ${liftInterpretation.text} Association
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">${liftInterpretation.desc}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">📊 Interpretation</h4>
+                        <div class="bg-blue-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
+                            <p class="mb-2">When customers purchase <strong>${rule.antecedents}</strong>, there is a <strong>${(rule.confidence * 100).toFixed(1)}%</strong> probability they will also purchase <strong>${rule.consequents}</strong>.</p>
+                            <p>This combination appears in <strong>${(rule.support * 100).toFixed(2)}%</strong> of all transactions, and the items are <strong>${rule.lift.toFixed(2)}x</strong> more likely to be purchased together than if they were independent.</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">💡 Business Insight</h4>
+                        <div class="bg-green-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
+                            ${businessInsight}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            detailsPanel.classList.add('open');
+            detailsOverlay.classList.add('open');
+        }
+        
+        // Generate contextual business insights based on metrics
+        function generateContextualInsights(rule) {
+            const insights = {
+                lift: {},
+                confidence: {},
+                support: {}
+            };
+            
+            // Lift-based insights
+            if (rule.lift > 3.0) {
+                insights.lift = {
+                    icon: '🚀',
+                    badge: 'Exceptional',
+                    color: '#10b981',
+                    message: 'Exceptionally strong association! Priority for bundling strategy.',
+                    action: 'Immediate action recommended for cross-selling and promotional bundles.'
+                };
+            } else if (rule.lift >= 2.7) {
+                insights.lift = {
+                    icon: '⭐',
+                    badge: 'Strong',
+                    color: '#3b82f6',
+                    message: 'Strong association. Good candidate for cross-promotion.',
+                    action: 'Consider featuring in marketing campaigns and store layout optimization.'
+                };
+            } else {
+                insights.lift = {
+                    icon: '📊',
+                    badge: 'Moderate',
+                    color: '#6b7280',
+                    message: 'Moderate association. Consider for targeted campaigns.',
+                    action: 'Test with pilot programs before full-scale implementation.'
+                };
+            }
+            
+            // Confidence-based insights
+            if (rule.confidence > 0.4) {
+                insights.confidence = {
+                    icon: '✅',
+                    badge: 'High Reliability',
+                    color: '#10b981',
+                    message: 'High reliability. Can confidently recommend consequent items.',
+                    action: 'Safe to implement automated recommendations and upselling strategies.'
+                };
+            } else if (rule.confidence >= 0.25) {
+                insights.confidence = {
+                    icon: '⚖️',
+                    badge: 'Moderate Reliability',
+                    color: '#f59e0b',
+                    message: 'Moderate reliability. Test with pilot program.',
+                    action: 'Monitor conversion rates and customer feedback during testing phase.'
+                };
+            } else {
+                insights.confidence = {
+                    icon: '⚠️',
+                    badge: 'Lower Reliability',
+                    color: '#ef4444',
+                    message: 'Lower reliability. Combine with other indicators.',
+                    action: 'Use in conjunction with other data points for decision-making.'
+                };
+            }
+            
+            // Support-based insights
+            const weeklyBaskets = Math.round(rule.support * 10000);
+            if (rule.support > 0.015) {
+                insights.support = {
+                    icon: '👥',
+                    badge: 'High Impact',
+                    color: '#10b981',
+                    message: `Affects many customers (${weeklyBaskets}+ weekly baskets). High revenue impact.`,
+                    action: 'Prioritize due to large customer base and revenue potential.'
+                };
+            } else if (rule.support >= 0.01) {
+                insights.support = {
+                    icon: '📈',
+                    badge: 'Moderate Impact',
+                    color: '#3b82f6',
+                    message: `Moderate frequency (${weeklyBaskets} weekly baskets).`,
+                    action: 'Good opportunity for steady incremental revenue growth.'
+                };
+            } else {
+                insights.support = {
+                    icon: '💎',
+                    badge: 'Niche Opportunity',
+                    color: '#8b5cf6',
+                    message: `Less frequent but may represent niche opportunity (${weeklyBaskets} weekly baskets).`,
+                    action: 'Consider for specialized customer segments or premium offerings.'
+                };
+            }
+            
+            return insights;
+        }
+        
+        // Generate business insight
+        function generateBusinessInsight(rule) {
+            const contextual = generateContextualInsights(rule);
+            
+            let insightHTML = '<div class="space-y-4">';
+            
+            // Lift Insight
+            insightHTML += `
+                <div class="border-l-4 pl-4 py-2" style="border-color: ${contextual.lift.color}">
+                    <div class="flex items-center mb-2">
+                        <span class="text-2xl mr-2">${contextual.lift.icon}</span>
+                        <span class="font-semibold text-sm px-3 py-1 rounded-full" style="background: ${contextual.lift.color}20; color: ${contextual.lift.color}">
+                            ${contextual.lift.badge}
+                        </span>
+                    </div>
+                    <p class="font-semibold text-gray-800 mb-1">${contextual.lift.message}</p>
+                    <p class="text-sm text-gray-600">${contextual.lift.action}</p>
+                </div>
+            `;
+            
+            // Confidence Insight
+            insightHTML += `
+                <div class="border-l-4 pl-4 py-2" style="border-color: ${contextual.confidence.color}">
+                    <div class="flex items-center mb-2">
+                        <span class="text-2xl mr-2">${contextual.confidence.icon}</span>
+                        <span class="font-semibold text-sm px-3 py-1 rounded-full" style="background: ${contextual.confidence.color}20; color: ${contextual.confidence.color}">
+                            ${contextual.confidence.badge}
+                        </span>
+                    </div>
+                    <p class="font-semibold text-gray-800 mb-1">${contextual.confidence.message}</p>
+                    <p class="text-sm text-gray-600">${contextual.confidence.action}</p>
+                </div>
+            `;
+            
+            // Support Insight
+            insightHTML += `
+                <div class="border-l-4 pl-4 py-2" style="border-color: ${contextual.support.color}">
+                    <div class="flex items-center mb-2">
+                        <span class="text-2xl mr-2">${contextual.support.icon}</span>
+                        <span class="font-semibold text-sm px-3 py-1 rounded-full" style="background: ${contextual.support.color}20; color: ${contextual.support.color}">
+                            ${contextual.support.badge}
+                        </span>
+                    </div>
+                    <p class="font-semibold text-gray-800 mb-1">${contextual.support.message}</p>
+                    <p class="text-sm text-gray-600">${contextual.support.action}</p>
+                </div>
+            `;
+            
+            // Strategic Recommendations
+            insightHTML += `
+                <div class="bg-indigo-50 rounded-lg p-4 mt-4">
+                    <h5 class="font-semibold text-gray-800 mb-2 flex items-center">
+                        <span class="text-xl mr-2">🎯</span>
+                        Strategic Recommendations
+                    </h5>
+                    <ul class="space-y-2 text-sm text-gray-700">
+            `;
+            
+            // Add specific recommendations based on metrics
+            if (rule.lift > 3.0 && rule.confidence > 0.3) {
+                insightHTML += `<li class="flex items-start"><span class="mr-2">•</span><span><strong>Bundle Strategy:</strong> Create a promotional bundle of "${rule.antecedents}" + "${rule.consequents}" with 10-15% discount.</span></li>`;
+            }
+            
+            if (rule.support > 0.015) {
+                insightHTML += `<li class="flex items-start"><span class="mr-2">•</span><span><strong>Store Layout:</strong> Place these items in close proximity or create an end-cap display.</span></li>`;
+            }
+            
+            if (rule.confidence > 0.35) {
+                insightHTML += `<li class="flex items-start"><span class="mr-2">•</span><span><strong>Recommendation Engine:</strong> Auto-suggest "${rule.consequents}" when "${rule.antecedents}" is added to cart.</span></li>`;
+            }
+            
+            if (rule.lift > 2.8) {
+                insightHTML += `<li class="flex items-start"><span class="mr-2">•</span><span><strong>Email Campaign:</strong> Target customers who bought "${rule.antecedents}" with offers for "${rule.consequents}".</span></li>`;
+            }
+            
+            if (rule.support < 0.012 && rule.lift > 2.9) {
+                insightHTML += `<li class="flex items-start"><span class="mr-2">•</span><span><strong>Niche Marketing:</strong> Promote this combination to specific customer segments for premium positioning.</span></li>`;
+            }
+            
+            insightHTML += `
+                    </ul>
+                </div>
+            `;
+            
+            insightHTML += '</div>';
+            
+            return insightHTML;
+        }
+        
+        // Close details panel
+        function closeDetailsPanel() {
+            detailsPanel.classList.remove('open');
+            detailsOverlay.classList.remove('open');
+            document.querySelectorAll('.rule-row').forEach(row => row.classList.remove('selected'));
+        }
+        
+        // Export to CSV
+        function exportToCSV() {
+            try {
+                if (filteredData.length === 0) {
+                    showError('No data to export. Please adjust your filters.');
+                    return;
+                }
+                
+                const headers = ['Antecedents', 'Consequents', 'Support', 'Confidence', 'Lift'];
+                const rows = filteredData.map(rule => [
+                    rule.antecedents,
+                    rule.consequents,
+                    rule.support.toFixed(4),
+                    rule.confidence.toFixed(4),
+                    rule.lift.toFixed(4)
+                ]);
+            
+            let csvContent = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `mba_rules_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg z-50';
+                successDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="text-xl mr-2">✅</span>
+                        <span>Successfully exported ${filteredData.length} rules to CSV</span>
+                    </div>
+                `;
+                document.body.appendChild(successDiv);
+                setTimeout(() => successDiv.remove(), 3000);
+            } catch (error) {
+                console.error('Export error:', error);
+                showError('Failed to export data. Please try again.');
+            }
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
