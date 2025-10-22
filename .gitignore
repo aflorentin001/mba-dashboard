@@ -19,3 +19,10 @@ desktop.ini
 
 # Temporary files
 *.tmp
+
+# Git helper scripts
+add-screenshots.bat
+commit-and-push.bat
+push-to-github.bat
+update-git.bat
+quick-commit.bat
